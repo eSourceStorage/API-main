@@ -1,9 +1,6 @@
 // functions/proxy.js
 
-export async function onRequest(context) {
-  const { request, url } = context;
-
-  // Extract the "url" query parameter
+export async function onRequest({ request, url }) {
   const targetUrl = url.searchParams.get("url");
   if (!targetUrl) {
     return new Response(JSON.stringify({ error: "Missing url parameter" }), {
@@ -12,28 +9,29 @@ export async function onRequest(context) {
     });
   }
 
-  // Clone headers and remove Host (Cloudflare will handle it)
-  const headers = new Headers(request.headers);
-  headers.delete("host");
-
-  // Prepare options for fetch
-  const fetchOptions = {
-    method: request.method,
-    headers,
-    // Only include the body for methods that allow it
-    body: ["POST", "PUT", "PATCH", "DELETE"].includes(request.method)
-      ? request.body
-      : undefined,
-    redirect: "manual",
-  };
-
   try {
-    const res = await fetch(targetUrl, fetchOptions);
+    // Clone headers and remove host (Cloudflare may block it)
+    const headers = new Headers(request.headers);
+    headers.delete("host");
 
-    // Clone the response headers
+    // Get the request body (Cloudflare Request body can be read as ArrayBuffer)
+    const body = ["POST", "PUT", "PATCH", "DELETE"].includes(request.method)
+      ? await request.arrayBuffer()
+      : undefined;
+
+    // Fetch the target URL
+    const res = await fetch(targetUrl, {
+      method: request.method,
+      headers,
+      body,
+      redirect: "manual",
+    });
+
+    // Clone response headers
     const responseHeaders = new Headers(res.headers);
+    // Cloudflare sometimes blocks certain headers; remove 'content-encoding' if needed
+    responseHeaders.delete("content-encoding");
 
-    // Return the response as-is
     return new Response(res.body, {
       status: res.status,
       statusText: res.statusText,
