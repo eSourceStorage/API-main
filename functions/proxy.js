@@ -1,4 +1,4 @@
-// functions/proxy.js
+// functions/proxy.js ok
 
 export async function onRequest({ request, url }) {
   const targetUrl = url.searchParams.get("url");
