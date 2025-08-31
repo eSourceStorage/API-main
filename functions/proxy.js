@@ -10,31 +10,32 @@ export async function onRequest({ request, url }) {
   }
 
   try {
-    // Clone headers and remove host (Cloudflare may block it)
+    // Only include body for methods that allow it
+    let body;
+    if (["POST", "PUT", "PATCH", "DELETE"].includes(request.method)) {
+      body = await request.arrayBuffer(); // safest way in Cloudflare
+    }
+
+    // Clone headers and remove 'host'
     const headers = new Headers(request.headers);
     headers.delete("host");
 
-    // Get the request body (Cloudflare Request body can be read as ArrayBuffer)
-    const body = ["POST", "PUT", "PATCH", "DELETE"].includes(request.method)
-      ? await request.arrayBuffer()
-      : undefined;
-
     // Fetch the target URL
-    const res = await fetch(targetUrl, {
+    const response = await fetch(targetUrl, {
       method: request.method,
       headers,
       body,
       redirect: "manual",
     });
 
-    // Clone response headers
-    const responseHeaders = new Headers(res.headers);
-    // Cloudflare sometimes blocks certain headers; remove 'content-encoding' if needed
+    // Clone response headers and remove problematic ones
+    const responseHeaders = new Headers(response.headers);
     responseHeaders.delete("content-encoding");
+    responseHeaders.delete("transfer-encoding");
 
-    return new Response(res.body, {
-      status: res.status,
-      statusText: res.statusText,
+    return new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
       headers: responseHeaders,
     });
   } catch (err) {
