@@ -61,7 +61,7 @@ export async function onRequest(context) {
 }
 
 function isAllowedDomain(origin) {
-  if (!origin) return false
+  if (!origin) return true // allow server-to-server requests
   try {
     const url = new URL(origin)
     const hostname = url.hostname.toLowerCase()
@@ -70,3 +70,4 @@ function isAllowedDomain(origin) {
     return false
   }
 }
+
