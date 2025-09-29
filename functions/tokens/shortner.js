@@ -42,7 +42,7 @@ export async function onRequest(context) {
     });
   }
 
-  const kvKey = `short_${replacementKey}|`; // Prefix as requested
+  const kvKey = `short_${replacementKey}`; // Prefix as requested
 
   try {
     // Check if the key already exists
