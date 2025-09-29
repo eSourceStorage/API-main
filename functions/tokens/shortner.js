@@ -1,3 +1,5 @@
+// File: /functions/storeKey.js
+
 export async function onRequest(context) {
   const { request, env } = context;
 
@@ -12,7 +14,17 @@ export async function onRequest(context) {
     });
   }
 
-
+  // Check origin
+  const origin = request.headers.get("Origin") || request.headers.get("Referer") || "";
+  if (!/^https?:\/\/([a-z0-9-]+\.)*returnedmath\.dev$/i.test(origin)) {
+    return new Response(JSON.stringify({
+      success: false,
+      error: "Unauthorized origin. Requests must come from returnedmath.dev or its subdomains."
+    }), {
+      status: 403,
+      headers: { "Content-Type": "application/json" }
+    });
+  }
 
   // Parse JSON body
   let body;
@@ -41,9 +53,11 @@ export async function onRequest(context) {
     });
   }
 
+  const kvKey = `short_${replacementKey}|`; // Prefix as requested
+
   try {
     // Check if the key already exists
-    const existing = await env.shortDB.get(replacementKey);
+    const existing = await env.TOKENS.get(kvKey);
     if (existing !== null) {
       return new Response(JSON.stringify({
         success: false,
@@ -55,11 +69,11 @@ export async function onRequest(context) {
     }
 
     // Store in KV
-    await env.shortDB.put(replacementKey, originalKey);
+    await env.TOKENS.put(kvKey, originalKey);
 
     return new Response(JSON.stringify({
       success: true,
-      message: `Stored '${originalKey}' as value for key '${replacementKey}'`
+      message: `Stored '${originalKey}' as value for key '${kvKey}'`
     }), {
       status: 200,
       headers: { "Content-Type": "application/json" }
