@@ -1,0 +1,87 @@
+export async function onRequest(context) {
+  const { request, env } = context;
+
+  // Only allow POST requests
+  if (request.method !== "POST") {
+    return new Response(JSON.stringify({
+      success: false,
+      error: "Only POST requests are allowed."
+    }), {
+      status: 405,
+      headers: { "Content-Type": "application/json" }
+    });
+  }
+
+  // Check origin
+  const origin = request.headers.get("Origin") || request.headers.get("Referer") || "";
+  if (!/^https?:\/\/([a-z0-9-]+\.)*returnedmath\.dev$/i.test(origin)) {
+    return new Response(JSON.stringify({
+      success: false,
+      error: "Unauthorized origin. Requests must come from returnedmath.dev or its subdomains."
+    }), {
+      status: 403,
+      headers: { "Content-Type": "application/json" }
+    });
+  }
+
+  // Parse JSON body
+  let body;
+  try {
+    body = await request.json();
+  } catch (err) {
+    return new Response(JSON.stringify({
+      success: false,
+      error: "Invalid JSON in request body."
+    }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" }
+    });
+  }
+
+  const { originalKey, replacementKey } = body;
+
+  // Validate parameters
+  if (!originalKey || !replacementKey) {
+    return new Response(JSON.stringify({
+      success: false,
+      error: "Both 'originalKey' and 'replacementKey' must be provided."
+    }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" }
+    });
+  }
+
+  try {
+    // Check if the key already exists
+    const existing = await env.shortDB.get(replacementKey);
+    if (existing !== null) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: `Key '${replacementKey}' already exists. Choose a different replacementKey.`
+      }), {
+        status: 409, // Conflict
+        headers: { "Content-Type": "application/json" }
+      });
+    }
+
+    // Store in KV
+    await env.shortDB.put(replacementKey, originalKey);
+
+    return new Response(JSON.stringify({
+      success: true,
+      message: `Stored '${originalKey}' as value for key '${replacementKey}'`
+    }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" }
+    });
+
+  } catch (err) {
+    return new Response(JSON.stringify({
+      success: false,
+      error: err.message
+    }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" }
+    });
+  }
+}
