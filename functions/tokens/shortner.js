@@ -12,17 +12,7 @@ export async function onRequest(context) {
     });
   }
 
-  // Check origin
-  const origin = request.headers.get("Origin") || request.headers.get("Referer") || "";
-  if (!/^https?:\/\/([a-z0-9-]+\.)*returnedmath\.dev$/i.test(origin)) {
-    return new Response(JSON.stringify({
-      success: false,
-      error: "Unauthorized origin. Requests must come from returnedmath.dev or its subdomains."
-    }), {
-      status: 403,
-      headers: { "Content-Type": "application/json" }
-    });
-  }
+
 
   // Parse JSON body
   let body;
